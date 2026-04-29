@@ -24,3 +24,22 @@ class DoRALayer(nn.Module):
         self.base_layer.weight.requires_grad = False
         if self.base_layer.bias is not None:
             self.base_layer.bias.requires_grad = False
+
+    def forward(self, x):
+        # base weights (V)
+        W = self.base_layer.weight
+
+        # LoRA update (del V)
+        lora_update = (self.lora_B @ self.lora_A) * self.scaling
+        W_v = W + lora_update
+
+        # get direction
+        norm_W_v = W_v(p = 2, dim = 1, keepdim = True)
+        directional_component = W_v / (norm_W_v + 1e-8) # 1e-8 is epsilon added for stability
+
+        # scale by magnitude
+        W_dora = self.m * directional_component
+
+        return F.linear(x, W_dora, self.base_layer.bias)
+
+
