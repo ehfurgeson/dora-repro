@@ -43,3 +43,13 @@ class DoRALayer(nn.Module):
         return F.linear(x, W_dora, self.base_layer.bias)
 
 
+def apply_dora(model, rank, target_modules = ["q_proj", "v_proj"]):
+    for name, module in model.named_children():
+        if isinstance(module, nn.Linear) and any(t in name for t in target_modules):
+            dora_layer = DoRALayer(module, rank = rank)
+            setattr(model, name, dora_layer)
+        else: 
+            apply_dora(module, rank, target_modules)
+        return model
+
+
