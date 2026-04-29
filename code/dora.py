@@ -41,6 +41,19 @@ class DoRALayer(nn.Module):
         W_dora = self.m * directional_component
 
         return F.linear(x, W_dora, self.base_layer.bias)
+    
+    @torch.no_grad()
+    def merge_and_unload(self):
+        W = self.base_layer.weight
+        lora_update = (self.lora_B @ self.lora_A) * self.scaling
+        W_v = W + lora_update
+
+        norm_W_v = W_v.norm(p=2, dim=1, keepdim=True)
+        directional_component = W_v / (norm_W_v + 1e-8)
+        W_dora = self.m * directional_component
+
+        self.base_layer.weight.copy_(W_dora)
+        return self.base_layer
 
 
 def apply_dora(model, rank, target_modules = ["q_proj", "v_proj"]):
@@ -52,4 +65,11 @@ def apply_dora(model, rank, target_modules = ["q_proj", "v_proj"]):
             apply_dora(module, rank, target_modules)
         return model
 
-
+def merge_and_unload_dora(model):
+        for name, module in model.named_children():
+            if isinstance(module, DoRALayer):
+                standard_linear_layer = module.merge_and_unload()
+                setattr(model, name, standard_linear_layer)
+            else:
+                merge_and_unload_dora(module)
+        return model

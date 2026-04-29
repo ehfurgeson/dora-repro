@@ -1,0 +1,77 @@
+import argparse
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments 
+from transformers import DataCollatorForLanguageModeling as dcflm
+from trl import SFTTrainer
+from peft import LoraConfig, get_peft_model
+from data_utils import load_commonsense
+from dora import apply_dora, merge_and_unload_dora
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--method", type = str, choices = ["lora", "dora"], required = True)
+    parser.add_argument("--rank", type = int, required = True)
+    args = parser.parse_args()
+
+    model_id = "meta-llama/Llama-2-7b-hf" # maybe experiment with other models
+
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    tokenizer.pad_token = tokenizer.eos_token
+    
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        torch_dtype = torch.bfloat16,
+        device_map = "auto" 
+    )
+
+    # applied standard LoRA
+    if args.method == "lora":
+        config = LoraConfig(
+            r = args.rank,
+            lora_alpha = args.rank * 2,
+            target_modules = ["q_proj", "v_proj"],
+            bias = "none",
+            task_type = "CAUSAL_LM"
+        )
+        model = get_peft_model(model, config)
+    elif args.method == "dora":
+        for param in model.parameters(): 
+            param.requires_grad = False
+        model = apply_dora(model, rank = args.rank)
+
+    train_data = load_commonsense(tokenizer)
+
+    training_args = TrainingArguments(
+        output_dir=f"./results/{args.method}_r{args.rank}",
+        per_device_train_batch_size = 4,
+        gradient_accumulation_steps = 4,
+        learning_rate = 2e-4,
+        num_train_epochs = 3,
+        lr_scheduler_type = "cosine",
+        warmup_ratio = 0.03,
+        logging_steps = 10,
+        save_strategy = "epoch",
+        bf16 = True,
+    )
+
+    trainer = SFTTrainer(
+        model = model,
+        train_dataset = train_data,
+        args = training_args,
+		data_collator = dcflm(tokenizer, mlm = False),
+    )
+
+    print(f"training {args.method} rank {args.rank}")
+    trainer.train()
+
+    if args.method == "dora":
+        trainer.model = merge_and_unload_dora(trainer.model)
+    elif args.method == "lora":
+        trainer.model = trainer.model.merge_and_unload()
+
+    trainer.model.save_pretrained(f"./results/{args.method}_r{args.rank}_final")
+    tokenizer.save_pretrained(f"./results/{args.method}_r{args.rank}_final")
+
+
+if __name__ == "__main__":
+    main()
