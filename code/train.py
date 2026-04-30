@@ -12,6 +12,7 @@ def main():
     parser.add_argument("--method", type = str, choices = ["lora", "dora"], required = True)
     parser.add_argument("--rank", type = int, required = True)
     parser.add_argument("--model_id", type = str, default = "meta-llama/Llama-2-7b-hf")
+    parser.add_argument("--hf_user", type = str, required = False)
     args = parser.parse_args()
 
     model_id = args.model_id 
@@ -47,7 +48,7 @@ def main():
     
     clean_model_name = model_id.split("/")[-1]
     save_dir = f"/content/temp_models/{clean_model_name}_{args.method}_r{args.rank}"
-    
+
     training_args = TrainingArguments(
         output_dir = save_dir,
         per_device_train_batch_size = 4,
@@ -78,6 +79,14 @@ def main():
 
     trainer.model.save_pretrained(f"{save_dir}_final")
     tokenizer.save_pretrained(f"{save_dir}_final")
+
+    # optionally saving finetuned models to hf
+    # if you do this make sure you have a write token to hf
+    if args.hf_user:
+        repo_name = f"{args.hf_user}/{clean_model_name}-{args.method}-r{args.rank}"
+        print(f"Pushing model to Hugging Face Hub: {repo_name}...")
+        trainer.model.push_to_hub(repo_name, private = True)
+        tokenizer.push_to_hub(repo_name, private = True)
 
 
 if __name__ == "__main__":
