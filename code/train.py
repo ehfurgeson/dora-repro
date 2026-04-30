@@ -21,13 +21,14 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
-    model.config.pad_token_id = tokenizer.pad_token_id
     
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype = torch.bfloat16,
         device_map = "auto" 
     )
+
+    model.config.pad_token_id = tokenizer.pad_token_id
 
     # applied standard LoRA
     if args.method == "lora":
