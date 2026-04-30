@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # to start run : chmod +x run_experiments.sh
 echo "Starting DoRA pipeline"
