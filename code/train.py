@@ -11,12 +11,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--method", type = str, choices = ["lora", "dora"], required = True)
     parser.add_argument("--rank", type = int, required = True)
+    parser.add_argument("--model_id", type = str, default = "meta-llama/Llama-2-7b-hf")
     args = parser.parse_args()
 
-    model_id = "meta-llama/Llama-2-7b-hf" # maybe experiment with other models
+    model_id = args.model_id 
 
+    print(f"loading {model_id}")
     tokenizer = AutoTokenizer.from_pretrained(model_id)
-    tokenizer.pad_token = tokenizer.eos_token
+    if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+    model.config.pad_token_id = tokenizer.pad_token_id
     
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
@@ -40,9 +44,12 @@ def main():
         model = apply_dora(model, rank = args.rank)
 
     train_data = load_commonsense(tokenizer)
+    
+    clean_model_name = model_id.split("/")[-1]
+    save_dir = f"./results/{clean_model_name}_{args.method}_r{args.rank}"
 
     training_args = TrainingArguments(
-        output_dir=f"./results/{args.method}_r{args.rank}",
+        output_dir = save_dir,
         per_device_train_batch_size = 4,
         gradient_accumulation_steps = 4,
         learning_rate = 2e-4,
@@ -69,8 +76,8 @@ def main():
     elif args.method == "lora":
         trainer.model = trainer.model.merge_and_unload()
 
-    trainer.model.save_pretrained(f"./results/{args.method}_r{args.rank}_final")
-    tokenizer.save_pretrained(f"./results/{args.method}_r{args.rank}_final")
+    trainer.model.save_pretrained(f"{save_dir}_final")
+    tokenizer.save_pretrained(f"{save_dir}_final")
 
 
 if __name__ == "__main__":
