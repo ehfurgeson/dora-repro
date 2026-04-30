@@ -1,8 +1,7 @@
 import argparse
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments 
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorForLanguageModeling as dcflm
-from trl import SFTTrainer
 from peft import LoraConfig, get_peft_model
 from data_utils import load_commonsense
 from dora import apply_dora, merge_and_unload_dora
@@ -57,13 +56,13 @@ def main():
         learning_rate = 2e-4,
         num_train_epochs = 3,
         lr_scheduler_type = "cosine",
-        warmup_ratio = 0.03,
+        warmup_steps = 50,
         logging_steps = 10,
         save_strategy = "epoch",
         bf16 = True,
     )
 
-    trainer = SFTTrainer(
+    trainer = Trainer(
         model = model,
         train_dataset = train_data,
         args = training_args,
