@@ -11,7 +11,7 @@ def evaluate_model(model_path,
         "--model_args", f"pretrained={model_path}",
         "--tasks", tasks,
         "--device", "cuda:0",
-        "--batch_size", "8"
+        "--batch_size", "auto"
     ]
     
     result = subprocess.run(cmd, capture_output = True, text = True)
