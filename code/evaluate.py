@@ -16,7 +16,8 @@ def evaluate_model(model_path,
     
     result = subprocess.run(cmd, capture_output = True, text = True)
 
-    log_name = model_path.replace("/", "_").replace(".", "") + "_eval.txt"
+    clean_name = model_path.split("/")[-1]
+    log_name = f"{clean_name}_eval.txt"
     with open(f"./results/{log_name}", "w") as f:
         f.write(result.stdout)
 

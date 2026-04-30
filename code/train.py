@@ -46,8 +46,8 @@ def main():
     train_data = load_commonsense(tokenizer)
     
     clean_model_name = model_id.split("/")[-1]
-    save_dir = f"./results/{clean_model_name}_{args.method}_r{args.rank}"
-
+    save_dir = f"/content/temp_models/{clean_model_name}_{args.method}_r{args.rank}"
+    
     training_args = TrainingArguments(
         output_dir = save_dir,
         per_device_train_batch_size = 4,
