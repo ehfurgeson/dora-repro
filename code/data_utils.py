@@ -4,7 +4,7 @@ def load_commonsense(tokenizer, max_length = 512):
     dataset = load_dataset("json", data_files={"train": "data/ft-training-set/commonsense_170k.json"})
 
     def format_prompt(example):
-        instruction = example["instructions"]
+        instruction = example["instruction"]
         output = example["output"]
 
         prompt = f"{instruction}\n{output}"
