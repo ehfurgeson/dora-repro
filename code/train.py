@@ -24,7 +24,8 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype = torch.bfloat16,
-        device_map = "auto" 
+        device_map = "auto",
+        attn_implementation = "flash_attention_2"
     )
 
     model.config.pad_token_id = tokenizer.pad_token_id
@@ -57,11 +58,11 @@ def main():
         per_device_train_batch_size = 4,
         gradient_accumulation_steps = 4,
         learning_rate = 2e-4,
-        num_train_epochs = 3,
+        max_steps = 1000,
         lr_scheduler_type = "cosine",
         warmup_steps = 50,
         logging_steps = 10,
-        save_strategy = "epoch",
+        save_strategy = "no",
         bf16 = True,
     )
 
