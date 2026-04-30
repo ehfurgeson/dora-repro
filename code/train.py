@@ -45,6 +45,9 @@ def main():
         model = apply_dora(model, rank = args.rank)
 
     train_data = load_commonsense(tokenizer)
+
+    if "train" in train_data:
+        train_data = train_data["train"]
     
     clean_model_name = model_id.split("/")[-1]
     save_dir = f"/content/temp_models/{clean_model_name}_{args.method}_r{args.rank}"
