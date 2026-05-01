@@ -73,3 +73,29 @@ def merge_and_unload_dora(model):
             else:
                 merge_and_unload_dora(module)
         return model
+
+def collect_dora_adapter_state(model):
+    adapter_state = {}
+    for name, module in model.named_modules():
+        if isinstance(module, DoRALayer):
+            adapter_state[f"{name}.lora_A"] = module.lora_A.detach().cpu()
+            adapter_state[f"{name}.lora_B"] = module.lora_B.detach().cpu()
+            adapter_state[f"{name}.m"] = module.m.detach().cpu()
+    return adapter_state
+
+def load_dora_adapter_state(model, adapter_state):
+    loaded = 0
+    for name, module in model.named_modules():
+        if isinstance(module, DoRALayer):
+            key_a = f"{name}.lora_A"
+            key_b = f"{name}.lora_B"
+            key_m = f"{name}.m"
+            if key_a not in adapter_state or key_b not in adapter_state or key_m not in adapter_state:
+                raise KeyError(f"missing adapter weights for {name}")
+            module.lora_A.data.copy_(adapter_state[key_a].to(module.lora_A.device))
+            module.lora_B.data.copy_(adapter_state[key_b].to(module.lora_B.device))
+            module.m.data.copy_(adapter_state[key_m].to(module.m.device))
+            loaded += 1
+    if loaded == 0:
+        raise ValueError("no DoRA layers found while loading adapter")
+    return model

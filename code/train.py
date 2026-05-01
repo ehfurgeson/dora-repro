@@ -1,10 +1,13 @@
 import argparse
+import json
+import os
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorForLanguageModeling as dcflm
 from peft import LoraConfig, get_peft_model
+from huggingface_hub import create_repo, upload_folder
 from data_utils import load_commonsense
-from dora import apply_dora, merge_and_unload_dora
+from dora import apply_dora, merge_and_unload_dora, collect_dora_adapter_state
 
 def main():
     parser = argparse.ArgumentParser()
@@ -76,6 +79,39 @@ def main():
     print(f"training {args.method} rank {args.rank}")
     trainer.train()
 
+    # optionally saving finetuned models to hf
+    # if you do this make sure you have a write token to hf
+    if args.hf_user:
+        repo_name = f"{args.hf_user}/{clean_model_name}-{args.method}-r{args.rank}"
+        print(f"Pushing adapter to Hugging Face Hub : {repo_name}")
+        if args.method == "lora":
+            trainer.model.push_to_hub(repo_name, private = True)
+            tokenizer.push_to_hub(repo_name, private = True)
+        else:
+            adapter_dir = f"{save_dir}_adapter"
+            os.makedirs(adapter_dir, exist_ok = True)
+            torch.save(
+                collect_dora_adapter_state(trainer.model),
+                os.path.join(adapter_dir, "dora_adapter.bin")
+            )
+            with open(os.path.join(adapter_dir, "adapter_config.json"), "w") as f:
+                json.dump(
+                    {
+                        "method": "dora",
+                        "base_model": model_id,
+                        "rank": args.rank,
+                        "target_modules": ["q_proj", "v_proj"]
+                    },
+                    f,
+                    indent = 2
+                )
+            tokenizer.save_pretrained(adapter_dir)
+            create_repo(repo_name, private = True, exist_ok = True)
+            upload_folder(
+                repo_id = repo_name,
+                folder_path = adapter_dir
+            )
+
     if args.method == "dora":
         trainer.model = merge_and_unload_dora(trainer.model)
     elif args.method == "lora":
@@ -83,14 +119,6 @@ def main():
 
     trainer.model.save_pretrained(f"{save_dir}_final")
     tokenizer.save_pretrained(f"{save_dir}_final")
-
-    # optionally saving finetuned models to hf
-    # if you do this make sure you have a write token to hf
-    if args.hf_user:
-        repo_name = f"{args.hf_user}/{clean_model_name}-{args.method}-r{args.rank}"
-        print(f"Pushing model to Hugging Face Hub: {repo_name}...")
-        trainer.model.push_to_hub(repo_name, private = True)
-        tokenizer.push_to_hub(repo_name, private = True)
 
 
 if __name__ == "__main__":
