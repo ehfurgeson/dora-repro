@@ -34,7 +34,7 @@ class DoRALayer(nn.Module):
         W_v = W + lora_update
 
         # get direction
-        norm_W_v = W_v(p = 2, dim = 1, keepdim = True)
+        norm_W_v = W_v.norm(p = 2, dim = 1, keepdim = True)
         directional_component = W_v / (norm_W_v + 1e-8) # 1e-8 is epsilon added for stability
 
         # scale by magnitude
@@ -63,7 +63,7 @@ def apply_dora(model, rank, target_modules = ["q_proj", "v_proj"]):
             setattr(model, name, dora_layer)
         else: 
             apply_dora(module, rank, target_modules)
-        return model
+    return model
 
 def merge_and_unload_dora(model):
         for name, module in model.named_children():
