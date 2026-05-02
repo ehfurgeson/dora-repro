@@ -1,0 +1,9 @@
+{
+  "method": "dora",
+  "base_model": "meta-llama/Llama-2-7b-hf",
+  "rank": 64,
+  "target_modules": [
+    "q_proj",
+    "v_proj"
+  ]
+}
