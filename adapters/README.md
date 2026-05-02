@@ -8,7 +8,7 @@ You can keep all adapters in Google Drive and rebuild/evaluate models from them.
 These adapters were trained on gated Llama base models (`meta-llama/Llama-2-7b-hf` and `meta-llama/Meta-Llama-3-8B`), so you must first request and receive access to those models on Hugging Face with the same account you use in Colab/local runs.
 After access is approved, authenticate in your runtime (for example with `huggingface-cli login` or `notebook_login`) using a token that can read gated repos.
 
-## 1) Suggested folder layout
+## 1) Folder layout
 
 ```text
 MyDrive/
