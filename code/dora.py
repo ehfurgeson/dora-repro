@@ -4,10 +4,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class DoRALayer(nn.Module):
-    def __init__(self, base_layer, rank = 32, alpha = 64):
+    def __init__(self, base_layer, rank = 32, alpha = None):
         super().__init__()
         self.base_layer = base_layer
         self.rank = rank
+        # default alpha = 2*rank to match the LoRA-paper convention (scaling = 2.0).
+        # the previous hardcoded alpha=64 made scaling rank-dependent and gave
+        # DoRA an unfairly large update at low rank vs the LoRA baseline.
+        if alpha is None:
+            alpha = 2 * rank
         self.scaling = alpha / rank
 
         # init LoRA matrices (del V)
