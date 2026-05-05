@@ -1,0 +1,7 @@
+Passed argument batch_size = auto:1. Detecting largest batch size
+Determined largest batch size: 64
+hf ({'pretrained': '/content/temp_models/Llama-2-7b-hf_lora_r2_final'}), gen_kwargs: ({}), limit: 10.0, num_fewshot: None, batch_size: auto (64)
+|Tasks|Version|Filter|n-shot|Metric|   |Value|   |Stderr|
+|-----|------:|------|-----:|------|---|----:|---|-----:|
+|boolq|      2|none  |     0|acc   |↑  |  0.8|±  |0.1333|
+
