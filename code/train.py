@@ -15,6 +15,7 @@ def main():
     parser.add_argument("--rank", type = int, required = True)
     parser.add_argument("--model_id", type = str, default = "meta-llama/Llama-2-7b-hf")
     parser.add_argument("--hf_user", type = str, required = False)
+    parser.add_argument("--max_steps", type = int, default = 1000)
     args = parser.parse_args()
 
     model_id = args.model_id 
@@ -61,7 +62,7 @@ def main():
         per_device_train_batch_size = 4,
         gradient_accumulation_steps = 4,
         learning_rate = 2e-4,
-        max_steps = 1000,
+        max_steps = args.max_steps,
         lr_scheduler_type = "cosine",
         warmup_steps = 50,
         logging_steps = 10,
