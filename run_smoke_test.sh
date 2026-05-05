@@ -60,8 +60,8 @@ for f in results/Llama-2-7b-hf_lora_r2_final_eval.txt \
 done
 
 # clean up smoke-test result files so they don't pollute results/
-rm -f results/Llama-2-7b-hf_lora_r2_final_eval.txt
-rm -f results/Llama-2-7b-hf_dora_r2_final_eval.txt
+#rm -f results/Llama-2-7b-hf_lora_r2_final_eval.txt
+#rm -f results/Llama-2-7b-hf_dora_r2_final_eval.txt
 
 echo ""
 echo "=== smoke test PASSED ==="
