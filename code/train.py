@@ -7,15 +7,27 @@ from transformers import DataCollatorForLanguageModeling as dcflm
 from peft import LoraConfig, get_peft_model
 from huggingface_hub import create_repo, upload_folder
 from data_utils import load_commonsense
-from dora import apply_dora, merge_and_unload_dora, collect_dora_adapter_state
+from dora import (
+    apply_dora,
+    merge_and_unload_dora,
+    collect_dora_adapter_state,
+    BiDoRAAlternatingCallback,
+)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", type = str, choices = ["lora", "dora"], required = True)
+    parser.add_argument("--method", type = str, choices = ["lora", "dora", "bidora"], required = True)
     parser.add_argument("--rank", type = int, required = True)
     parser.add_argument("--model_id", type = str, default = "meta-llama/Llama-2-7b-hf")
     parser.add_argument("--hf_user", type = str, required = False)
     parser.add_argument("--max_steps", type = int, default = 1000)
+    # bidora-only knobs. phase_steps is the number of optimizer steps spent in
+    # one component before flipping (1 = alternate every batch). start_with
+    # defaults to direction because lora_B is zero-init and the initial DoRA
+    # output equals the base model — updating direction first lets the m grad
+    # see a non-degenerate W_v.
+    parser.add_argument("--bidora_phase_steps", type = int, default = 1)
+    parser.add_argument("--bidora_start_with", type = str, choices = ["direction", "magnitude"], default = "direction")
     args = parser.parse_args()
 
     model_id = args.model_id 
@@ -44,8 +56,8 @@ def main():
             task_type = "CAUSAL_LM"
         )
         model = get_peft_model(model, config)
-    elif args.method == "dora":
-        for param in model.parameters(): 
+    elif args.method in ("dora", "bidora"):
+        for param in model.parameters():
             param.requires_grad = False
         model = apply_dora(model, rank = args.rank)
 
@@ -77,6 +89,13 @@ def main():
 		data_collator = dcflm(tokenizer, mlm = False),
     )
 
+    if args.method == "bidora":
+        trainer.add_callback(BiDoRAAlternatingCallback(
+            model = model,
+            phase_steps = args.bidora_phase_steps,
+            start_with = args.bidora_start_with,
+        ))
+
     print(f"training {args.method} rank {args.rank}")
     trainer.train()
 
@@ -98,7 +117,7 @@ def main():
             with open(os.path.join(adapter_dir, "adapter_config.json"), "w") as f:
                 json.dump(
                     {
-                        "method": "dora",
+                        "method": args.method,
                         "base_model": model_id,
                         "rank": args.rank,
                         "target_modules": ["q_proj", "v_proj"]
@@ -113,7 +132,7 @@ def main():
                 folder_path = adapter_dir
             )
 
-    if args.method == "dora":
+    if args.method in ("dora", "bidora"):
         trainer.model = merge_and_unload_dora(trainer.model)
     elif args.method == "lora":
         trainer.model = trainer.model.merge_and_unload()

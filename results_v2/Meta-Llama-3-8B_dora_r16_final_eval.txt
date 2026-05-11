@@ -1,0 +1,18 @@
+Passed argument batch_size = auto:1. Detecting largest batch size
+Determined largest batch size: 22
+hf ({'pretrained': '/content/temp_models/Meta-Llama-3-8B_dora_r16_final'}), gen_kwargs: ({}), limit: None, num_fewshot: None, batch_size: auto (22)
+|    Tasks    |Version|Filter|n-shot| Metric |   |Value |   |Stderr|
+|-------------|------:|------|-----:|--------|---|-----:|---|-----:|
+|arc_challenge|      1|none  |     0|acc     |↑  |0.4949|±  |0.0146|
+|             |       |none  |     0|acc_norm|↑  |0.5213|±  |0.0146|
+|arc_easy     |      1|none  |     0|acc     |↑  |0.8039|±  |0.0081|
+|             |       |none  |     0|acc_norm|↑  |0.7921|±  |0.0083|
+|boolq        |      2|none  |     0|acc     |↑  |0.8269|±  |0.0066|
+|hellaswag    |      1|none  |     0|acc     |↑  |0.5892|±  |0.0049|
+|             |       |none  |     0|acc_norm|↑  |0.7852|±  |0.0041|
+|openbookqa   |      1|none  |     0|acc     |↑  |0.3400|±  |0.0212|
+|             |       |none  |     0|acc_norm|↑  |0.4360|±  |0.0222|
+|piqa         |      1|none  |     0|acc     |↑  |0.8052|±  |0.0092|
+|             |       |none  |     0|acc_norm|↑  |0.8134|±  |0.0091|
+|winogrande   |      1|none  |     0|acc     |↑  |0.7687|±  |0.0119|
+

@@ -2,6 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from transformers import TrainerCallback
 
 class DoRALayer(nn.Module):
     def __init__(self, base_layer, rank = 32, alpha = None):
@@ -87,6 +88,51 @@ def collect_dora_adapter_state(model):
             adapter_state[f"{name}.lora_B"] = module.lora_B.detach().cpu()
             adapter_state[f"{name}.m"] = module.m.detach().cpu()
     return adapter_state
+
+def set_bidora_mode(model, mode):
+    # mode in {"magnitude", "direction", "both"} — toggles requires_grad on each
+    # DoRA layer so a backward pass only populates grads for the active component.
+    # parameters stay in the optimizer's param groups; AdamW skips params whose
+    # grad is None, so this cleanly gates updates without touching optimizer state.
+    if mode not in ("magnitude", "direction", "both"):
+        raise ValueError(f"invalid bidora mode: {mode}")
+    mag = mode in ("magnitude", "both")
+    dir_ = mode in ("direction", "both")
+    for module in model.modules():
+        if isinstance(module, DoRALayer):
+            module.m.requires_grad = mag
+            module.lora_A.requires_grad = dir_
+            module.lora_B.requires_grad = dir_
+    return model
+
+
+class BiDoRAAlternatingCallback(TrainerCallback):
+    # alternates magnitude-only and direction-only optimizer steps. flips at
+    # on_step_begin, which fires once per optimizer step (i.e. after a full
+    # gradient_accumulation cycle), so the mode is stable across micro-batches
+    # within one update.
+    def __init__(self, model, phase_steps = 1, start_with = "direction"):
+        if start_with not in ("magnitude", "direction"):
+            raise ValueError(f"invalid start_with: {start_with}")
+        self.model = model
+        self.phase_steps = max(1, int(phase_steps))
+        self.start_with = start_with
+        self._counter = 0
+
+    def _mode_for(self, counter):
+        phase = (counter // self.phase_steps) % 2
+        if self.start_with == "direction":
+            return "direction" if phase == 0 else "magnitude"
+        return "magnitude" if phase == 0 else "direction"
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        self._counter = 0
+        set_bidora_mode(self.model, self._mode_for(0))
+
+    def on_step_begin(self, args, state, control, **kwargs):
+        set_bidora_mode(self.model, self._mode_for(self._counter))
+        self._counter += 1
+
 
 def load_dora_adapter_state(model, adapter_state):
     loaded = 0
